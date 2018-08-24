@@ -1,6 +1,7 @@
 function [p, h, stats] = hist_comp_int(base,neighbour)
 % A function for plotting a histogram of observed and expected
-% distributions between two cell types
+% distributions between two cell types, and calculating the statistical
+% significance of a Wilcoxon Rank Sum paired comparison
 % cell type options:
 % key{1} = 'rubbish';
 % key{2} = 'tumour';
