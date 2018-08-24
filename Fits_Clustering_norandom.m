@@ -2,7 +2,7 @@
 %cbupool(128) % Open parallel worker pool
 
 filenames = dir('./level2_catalogues/*.fits');
-cluster_size = 5; % Define the size of the cluster of interest for distance in terms of number of cells
+cluster_size = [1, 2, 3, 4, 5, 10]; % Define the size of the cluster of interest for distance in terms of number of cells
 
 %Create output file
 outfile = ['./clustering_data_nobootstrap.csv'];
@@ -67,10 +67,10 @@ parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
         
         % Now compute the euclidian distances between each cell type and its
         % nearest neighbour of another cell type
-        av_bootstrap_distance = zeros(1,size(all_combinations,2));
-        iqr_bootstrap_distance = zeros(1,size(all_combinations,2));
-        av_real_distance = zeros(1,size(all_combinations,2));
-        iqr_real_distance = zeros(1,size(all_combinations,2));
+        av_bootstrap_distance = zeros(length(cluster_size),size(all_combinations,2));
+        iqr_bootstrap_distance = zeros(length(cluster_size),size(all_combinations,2));
+        av_real_distance = zeros(length(cluster_size),size(all_combinations,2));
+        iqr_real_distance = zeros(length(cluster_size),size(all_combinations,2));
         for this_comb = 1:size(all_combinations,2)
             sprintf(['Working on file ' filenames(thisfile).name ' combination ' num2str(this_comb) ])
             base_cells = data{cell_ind}==all_combinations(1,this_comb);
@@ -87,14 +87,18 @@ parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
                 % computation)
                 %av_real_distance(this_comb) = mean(max(pdist2([data{X_ind}(neighbour_cells) data{Y_ind}(neighbour_cells)],[data{X_ind}(base_cells) data{Y_ind}(base_cells)],'euclidean','Smallest',2)));
                 %clear all_real_distances all_multi_real_distances
-                all_multi_real_distances = pdist2([data{X_ind}(neighbour_cells) data{Y_ind}(neighbour_cells)],[data{X_ind}(base_cells) data{Y_ind}(base_cells)],'euclidean','Smallest',cluster_size+1);
-                if any(all_multi_real_distances(1,:)==0) %Now exclude case where zero distance indicates it is the same point
-                    all_real_distances = mean(all_multi_real_distances(2:end,:),1);
-                else
-                    all_real_distances = mean(all_multi_real_distances(1:end-1,:),1);
+                all_multi_real_distances = pdist2([data{X_ind}(neighbour_cells) data{Y_ind}(neighbour_cells)],[data{X_ind}(base_cells) data{Y_ind}(base_cells)],'euclidean','Smallest',max(cluster_size)+1);
+                i = 0;
+                for this_clustsize = cluster_size
+                    i = i+1;
+                    if any(all_multi_real_distances(1,:)==0) %Now exclude case where zero distance indicates it is the same point
+                        all_real_distances = mean(all_multi_real_distances(2:(this_clustsize+1),:),1);
+                    else
+                        all_real_distances = mean(all_multi_real_distances(1:this_clustsize,:),1);
+                    end
+                    av_real_distance(i,this_comb) = median(all_real_distances);
+                    iqr_real_distance(i,this_comb) = iqr(all_real_distances);
                 end
-                av_real_distance(this_comb) = median(all_real_distances);
-                iqr_real_distance(this_comb) = iqr(all_real_distances);
                 
                 % Then randomise the neighbours across all cell locations to create a
                 % null distribution - just once here for computational
@@ -102,27 +106,33 @@ parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
                 
                 
                 random_neighbour_cells = neighbour_cells(randperm(length(neighbour_cells)));
-                random_multi_distance = pdist2([data{X_ind}(random_neighbour_cells) data{Y_ind}(random_neighbour_cells)],[data{X_ind}(base_cells) data{Y_ind}(base_cells)],'euclidean','Smallest',cluster_size+1);
-                if any(random_multi_distance(1,:)==0) %Now exclude case where zero distance indicates it is the same point
-                    all_random_distances = mean(random_multi_distance(2:end,:),1);
-                else
-                    all_random_distances = mean(random_multi_distance(1:end-1,:),1);
+                random_multi_distance = pdist2([data{X_ind}(random_neighbour_cells) data{Y_ind}(random_neighbour_cells)],[data{X_ind}(base_cells) data{Y_ind}(base_cells)],'euclidean','Smallest',max(cluster_size)+1);
+                i = 0;
+                for this_clustsize = cluster_size
+                    i = i+1;
+                    if any(random_multi_distance(1,:)==0) %Now exclude case where zero distance indicates it is the same point
+                        all_random_distances = mean(random_multi_distance(2:(this_clustsize+1),:),1);
+                    else
+                        all_random_distances = mean(random_multi_distance(1:this_clustsize,:),1);
+                    end
+                    av_bootstrap_distance(i,this_comb) = median(all_random_distances);
+                    iqr_bootstrap_distance(i,this_comb) = iqr(all_random_distances);
                 end
-                av_bootstrap_distance(this_comb) = median(all_random_distances);
-                iqr_bootstrap_distance(this_comb) = iqr(all_random_distances);
-                               
                 
             end
         end
-        
-        data_string = [];
-        for this_comb = 1:size(all_combinations,2)
-            data_string = [data_string ',' num2str(av_real_distance(this_comb)) ',' num2str(av_bootstrap_distance(this_comb)*100) ',' num2str(iqr_real_distance(this_comb)) ',' num2str(iqr_bootstrap_distance(this_comb))];
-        end
-        
+        i = 0;
         outfile = ['./clustering_data_nobootstrap.csv'];
         fileID = fopen(outfile,'a');
-        fprintf(fileID,[filenames(thisfile).name(1:end-5) ',' num2str(cluster_size) ',' num2str(num_total) ',' num2str(num_rubbish) ',' num2str(num_tum_cells) ',' num2str(num_ly_cells) ',' num2str(num_str_cells) ',' num2str(num_norm_cells) ',' num2str(prop_rubbish) ',' num2str(prop_tum_cells) ',' num2str(prop_ly_cells) ',' num2str(prop_str_cells) ',' num2str(prop_norm_cells) data_string '\n']);
+        for this_clustsize = cluster_size
+            i = i+1;
+            data_string = [];
+            for this_comb = 1:size(all_combinations,2)
+                data_string = [data_string ',' num2str(av_real_distance(i,this_comb)) ',' num2str(av_bootstrap_distance(i,this_comb)) ',' num2str(iqr_real_distance(i,this_comb)) ',' num2str(i,iqr_bootstrap_distance(this_comb))];
+            end
+
+            fprintf(fileID,[filenames(thisfile).name(1:end-5) ',' num2str(cluster_size(i)) ',' num2str(num_total) ',' num2str(num_rubbish) ',' num2str(num_tum_cells) ',' num2str(num_ly_cells) ',' num2str(num_str_cells) ',' num2str(num_norm_cells) ',' num2str(prop_rubbish) ',' num2str(prop_tum_cells) ',' num2str(prop_ly_cells) ',' num2str(prop_str_cells) ',' num2str(prop_norm_cells) data_string '\n']);
+        end
         fclose(fileID);
         sprintf(['Finished file ' filenames(thisfile).name])
     catch
