@@ -2,8 +2,8 @@
 %cbupool(128) % Open parallel worker pool
 
 filenames = dir('./level2_catalogues/*.fits');
-cluster_size = [1, 2, 3, 4, 5, 10]; % Define the size of the cluster of interest for distance in terms of number of cells
-clusters_for_detail = [3, 5, 10]; %Define the sizes of the detailed outputs
+cluster_size = [1, 2, 3, 4, 5, 10, 20, 50]; % Define the size of the cluster of interest for distance in terms of number of cells
+clusters_for_detail = [3, 5, 10, 20, 50]; %Define the sizes of the detailed outputs
 
 detail_filenames = {'590015.fits', '602200.fits'}; %Which files do we want detailed output for?
 
@@ -13,7 +13,7 @@ outfile_detail_stem = ['./clustering_detail'];
 fileID = fopen(outfile,'w');
 
 %Write output file header
-all_combinations = combvec(0:4,0:4);
+all_combinations = combvec(1:4,1:4); % 0:4 includes rubbish, 1:4 excludes
 key{1} = 'rubbish';
 key{2} = 'tumour';
 key{3} = 'lymphocyte';
@@ -80,6 +80,12 @@ for thisfile = 1:size(filenames,1) %could parallelise here by subject
         prop_str_cells = num_str_cells/num_total;
         prop_norm_cells = num_norm_cells/num_total;
         
+        % Now exclude anything marked as rubbish from the whole data
+        data_trimmed = data;
+        data_trimmed{cell_ind} = data_trimmed{cell_ind}(data{cell_ind}~=0);
+        data_trimmed{X_ind} = data_trimmed{X_ind}(data{cell_ind}~=0);
+        data_trimmed{Y_ind} = data_trimmed{Y_ind}(data{cell_ind}~=0);
+        
         % Now compute the euclidian distances between each cell type and its
         % nearest neighbour of another cell type
         av_bootstrap_distance = zeros(length(cluster_size),size(all_combinations,2));
@@ -88,8 +94,8 @@ for thisfile = 1:size(filenames,1) %could parallelise here by subject
         iqr_real_distance = zeros(length(cluster_size),size(all_combinations,2));
         for this_comb = 1:size(all_combinations,2)
             sprintf(['Working on file ' filenames(thisfile).name ' combination ' num2str(this_comb) ])
-            base_cells = data{cell_ind}==all_combinations(1,this_comb);
-            neighbour_cells = data{cell_ind}==all_combinations(2,this_comb);
+            base_cells = data_trimmed{cell_ind}==all_combinations(1,this_comb);
+            neighbour_cells = data_trimmed{cell_ind}==all_combinations(2,this_comb);
             if sum(base_cells)==0||sum(neighbour_cells)==0
                 av_bootstrap_distance(:,this_comb) = NaN;
                 av_real_distance(:,this_comb) = NaN;
@@ -100,9 +106,9 @@ for thisfile = 1:size(filenames,1) %could parallelise here by subject
                 % First compute the real distances between the cell of interest and its
                 % second nearest neighbour (to allow same cell type distance
                 % computation)
-                %av_real_distance(this_comb) = mean(max(pdist2([data{X_ind}(neighbour_cells) data{Y_ind}(neighbour_cells)],[data{X_ind}(base_cells) data{Y_ind}(base_cells)],'euclidean','Smallest',2)));
+                %av_real_distance(this_comb) = mean(max(pdist2([data_trimmed{X_ind}(neighbour_cells) data_trimmed{Y_ind}(neighbour_cells)],[data_trimmed{X_ind}(base_cells) data_trimmed{Y_ind}(base_cells)],'euclidean','Smallest',2)));
                 %clear all_real_distances all_multi_real_distances
-                all_multi_real_distances = pdist2([data{X_ind}(neighbour_cells) data{Y_ind}(neighbour_cells)],[data{X_ind}(base_cells) data{Y_ind}(base_cells)],'euclidean','Smallest',max(cluster_size)+1);
+                all_multi_real_distances = pdist2([data_trimmed{X_ind}(neighbour_cells) data_trimmed{Y_ind}(neighbour_cells)],[data_trimmed{X_ind}(base_cells) data_trimmed{Y_ind}(base_cells)],'euclidean','Smallest',max(cluster_size)+1);
                 i = 0;
                 for this_clustsize = cluster_size
                     i = i+1;
@@ -121,7 +127,7 @@ for thisfile = 1:size(filenames,1) %could parallelise here by subject
                 
                 
                 random_neighbour_cells = neighbour_cells(randperm(length(neighbour_cells)));
-                random_multi_distance = pdist2([data{X_ind}(random_neighbour_cells) data{Y_ind}(random_neighbour_cells)],[data{X_ind}(base_cells) data{Y_ind}(base_cells)],'euclidean','Smallest',max(cluster_size)+1);
+                random_multi_distance = pdist2([data_trimmed{X_ind}(random_neighbour_cells) data_trimmed{Y_ind}(random_neighbour_cells)],[data_trimmed{X_ind}(base_cells) data_trimmed{Y_ind}(base_cells)],'euclidean','Smallest',max(cluster_size)+1);
                 i = 0;
                 for this_clustsize = cluster_size
                     i = i+1;
@@ -150,6 +156,13 @@ for thisfile = 1:size(filenames,1) %could parallelise here by subject
         end
         fclose(fileID);
         sprintf(['Finished file ' filenames(thisfile).name])
+        
+        % Nearest N cells and what they are
+        % Distance between cell and its nearest n lymphs
+        % Distance between cell and its nearest n tumour
+        % Distance between cell and its nearest n stromal
+        
+        
     catch
         outfile = ['./clustering_data_multi_distance_second.csv'];
         fileID = fopen(outfile,'a');
