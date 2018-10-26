@@ -32,8 +32,8 @@ fprintf(fileID,['Slide_ID,Cluster_Size,Num_Total,Num_Rubbish,Num_Tumour,Num_Lymp
 fclose(fileID);
 
 clear this_comb
-parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
-%for thisfile = 1:size(filenames,1) %could parallelise here by subject
+%parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
+for thisfile = 1:size(filenames,1) %could parallelise here by subject
     %parfor thisfile = 1:5; %for testing
     if any(strcmp(filenames(thisfile).name,detail_filenames))
         detailed_output = 1;
@@ -114,6 +114,9 @@ parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
                 [all_multi_real_distances] = pdist2([data_trimmed{X_ind}(neighbour_cells) data_trimmed{Y_ind}(neighbour_cells)],[data_trimmed{X_ind}(base_cells) data_trimmed{Y_ind}(base_cells)],'euclidean','Smallest',max(cluster_size)+1);
                 i = 0;
                 j = 0;
+                if size(all_multi_real_distances,1)<max(cluster_size)+1
+                    all_multi_real_distances(size(all_multi_real_distances,1)+1:max(cluster_size)+1,:)=NaN;
+                end
                 for this_clustsize = cluster_size
                     i = i+1;
                     if any(all_multi_real_distances(1,:)==0) %Now exclude case where zero distance indicates it is the same point
@@ -136,11 +139,6 @@ parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
                 end
                 
                 
-                
-                % Nearest N cells and what they are
-                
-                
-                
                 % Then randomise the neighbours across all cell locations to create a
                 % null distribution - just once here for computational
                 % speed
@@ -149,6 +147,9 @@ parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
                 random_neighbour_cells = neighbour_cells(randperm(length(neighbour_cells)));
                 [random_multi_distance] = pdist2([data_trimmed{X_ind}(random_neighbour_cells) data_trimmed{Y_ind}(random_neighbour_cells)],[data_trimmed{X_ind}(base_cells) data_trimmed{Y_ind}(base_cells)],'euclidean','Smallest',max(cluster_size)+1);
                 i = 0;
+                if size(random_multi_distance,1)<max(cluster_size)+1
+                    random_multi_distance(size(all_multi_real_distances,1)+1:max(cluster_size)+1,:)=NaN;
+                end
                 for this_clustsize = cluster_size
                     i = i+1;
                     if any(random_multi_distance(1,:)==0) %Now exclude case where zero distance indicates it is the same point
