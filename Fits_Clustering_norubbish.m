@@ -148,7 +148,7 @@ for thisfile = 1:size(filenames,1) %could parallelise here by subject
                 [random_multi_distance] = pdist2([data_trimmed{X_ind}(random_neighbour_cells) data_trimmed{Y_ind}(random_neighbour_cells)],[data_trimmed{X_ind}(base_cells) data_trimmed{Y_ind}(base_cells)],'euclidean','Smallest',max(cluster_size)+1);
                 i = 0;
                 if size(random_multi_distance,1)<max(cluster_size)+1
-                    random_multi_distance(size(all_multi_real_distances,1)+1:max(cluster_size)+1,:)=NaN;
+                    random_multi_distance(size(random_multi_distance,1)+1:max(cluster_size)+1,:)=NaN;
                 end
                 for this_clustsize = cluster_size
                     i = i+1;
