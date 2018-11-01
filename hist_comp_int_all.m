@@ -1,0 +1,172 @@
+function [p, h, stats] = hist_comp_int_all
+% A function for plotting a histogram of observed and expected
+% distributions between all cell types pairwise, and calculating the statistical
+% significance of a Wilcoxon Rank Sum paired comparison.
+% Histogram is saved as a pdf.
+% cell type options:
+% key{1} = 'rubbish';
+% key{2} = 'tumour';
+% key{3} = 'lymphocyte';
+% key{4} = 'stroma';
+% key{5} = 'normal';
+
+addpath('/group/language/data/thomascope/vespa/SPM12version/Standalone preprocessing pipeline/tc_source_stats/ojwoodford-export_fig-216b30e')
+
+sqrt_norm = 0;
+
+cluster_size = [1, 2, 3, 4, 5, 10, 20, 50];
+
+%Simulate output file header
+all_combinations = combvec(1:4,1:4); %Exclude rubbish, otherwise include 0 in the vector
+key{1} = 'rubbish';
+key{2} = 'tumour';
+key{3} = 'lymphocyte';
+key{4} = 'stroma';
+key{5} = 'normal';
+header_string = [];
+for this_comb = 1:size(all_combinations,2)
+    header_string = [header_string ',Av_Mean_Distance_' key{all_combinations(1,this_comb)+1} '_to_' key{all_combinations(2,this_comb)+1} ',Av_Bootstrap_Distance_' key{all_combinations(1,this_comb)+1} '_to_' key{all_combinations(2,this_comb)+1} ',iqr_Mean_Distance_' key{all_combinations(1,this_comb)+1} '_to_' key{all_combinations(2,this_comb)+1} ',iqr_Bootstrap_Distance_' key{all_combinations(1,this_comb)+1} '_to_' key{all_combinations(2,this_comb)+1}];
+end
+
+full_string = ['Slide_ID,Cluster_Size,Num_Total,Num_Rubbish,Num_Tumour,Num_Lymphs,Num_Stroma,Num_Normal,Prop_Rubbish,Prop_Tumour,Prop_Lymphs,Prop_Stroma,Prop_Normal' header_string];
+
+split_full_string = strsplit(full_string,',');
+
+wei_data = csvread('clustering_data_multi_distance_second.csv',1,0);
+
+for this_comb = 1:size(all_combinations,2)
+    for this_clust_size = cluster_size;
+        IndexC = strfind(split_full_string, ['Av_Mean_Distance_' key{all_combinations(1,this_comb)+1} '_to_' key{all_combinations(2,this_comb)+1}]);
+        col_int = find(not(cellfun('isempty', IndexC)));
+        
+        IndexC = strfind(split_full_string, ['Cluster_Size']);
+        clust_int = find(not(cellfun('isempty', IndexC)));
+        this_clust_int = wei_data(:,clust_int)==this_clust_size;
+        
+        if ~sqrt_norm
+            
+            max_val = max(max(wei_data(this_clust_int,col_int)),max(wei_data(this_clust_int,col_int+1)));
+            bin_centres = 0:max_val/10000:max_val;
+            [n2,x2]=hist(wei_data(this_clust_int,col_int),bin_centres);
+            [n1,x1]=hist(wei_data(this_clust_int,col_int+1),bin_centres);
+            
+            thisfig = figure;
+            subplot(5,1,1)
+            h1=bar(x1,n1,'hist');
+            hold on
+            h2=bar(x2,n2,'hist');
+            set(h2,'facecolor','red')
+            set(h2,'edgecolor','none')
+            set(h1,'edgecolor','none')
+            alpha(0.3)
+            legend({'expected','observed'})
+            title(['Distance ' key{all_combinations(1,this_comb)+1} ' to ' key{all_combinations(2,this_comb)+1} ' cluster size ' num2str(this_clust_size)])
+            
+            subplot(5,1,2)
+            h1=bar(x1,n1,'hist');
+            hold on
+            h2=bar(x2,n2,'hist');
+            set(h2,'facecolor','red')
+            set(h2,'edgecolor','none')
+            set(h1,'edgecolor','none')
+            xlim([0 5000])
+            alpha(0.3)
+            
+            subplot(5,1,3)
+            h1=bar(x1,n1,'hist');
+            hold on
+            h2=bar(x2,n2,'hist');
+            set(h2,'facecolor','red')
+            set(h2,'edgecolor','none')
+            set(h1,'edgecolor','none')
+            xlim([0 1000])
+            alpha(0.3)
+            
+            subplot(5,1,4)
+            h1=bar(x1,n1,'hist');
+            hold on
+            h2=bar(x2,n2,'hist');
+            set(h2,'facecolor','red')
+            set(h2,'edgecolor','none')
+            set(h1,'edgecolor','none')
+            xlim([0 500])
+            alpha(0.3)
+            
+            subplot(5,1,5)
+            hist(wei_data(this_clust_int,col_int)-wei_data(this_clust_int,col_int+1),-max_val:1:max_val)
+            xlim([-500 500])
+            title('Distribution of differences')
+            
+        else
+            max_val = max(max(wei_data(this_clust_int,col_int)),max(wei_data(this_clust_int,col_int+1)));
+            bin_centres = sqrt(0:max_val/10000:max_val);
+            [n2,x2]=hist(sqrt(wei_data(this_clust_int,col_int)),bin_centres);
+            [n1,x1]=hist(sqrt(wei_data(this_clust_int,col_int+1)),bin_centres);
+            
+            
+            thisfig = figure;
+            subplot(5,1,1)
+            h1=bar(x1,n1,'hist');
+            hold on
+            h2=bar(x2,n2,'hist');
+            set(h2,'facecolor','red')
+            set(h2,'edgecolor','none')
+            set(h1,'edgecolor','none')
+            alpha(0.3)
+            legend({'expected','observed'})
+            title(['Distance ' key{all_combinations(1,this_comb)+1} ' to ' key{all_combinations(2,this_comb)+1} ' cluster size ' num2str(this_clust_size)])
+            
+            subplot(5,1,2)
+            h1=bar(x1,n1,'hist');
+            hold on
+            h2=bar(x2,n2,'hist');
+            set(h2,'facecolor','red')
+            set(h2,'edgecolor','none')
+            set(h1,'edgecolor','none')
+            xlim([0 sqrt(5000)])
+            alpha(0.3)
+            
+            subplot(5,1,3)
+            h1=bar(x1,n1,'hist');
+            hold on
+            h2=bar(x2,n2,'hist');
+            set(h2,'facecolor','red')
+            set(h2,'edgecolor','none')
+            set(h1,'edgecolor','none')
+            xlim([0 sqrt(1000)])
+            alpha(0.3)
+            
+            subplot(5,1,4)
+            h1=bar(x1,n1,'hist');
+            hold on
+            h2=bar(x2,n2,'hist');
+            set(h2,'facecolor','red')
+            set(h2,'edgecolor','none')
+            set(h1,'edgecolor','none')
+            xlim([0 sqrt(500)])
+            alpha(0.3)
+            
+            subplot(5,1,5)
+            hist(sqrt(wei_data(this_clust_int,col_int)-wei_data(this_clust_int,col_int+1)),sqrt(-max_val:1:max_val))
+            xlim([-500 500])
+            title('Distribution of differences')
+            
+        end
+        
+        [p, h, stats] = signrank(wei_data(this_clust_int,col_int),wei_data(this_clust_int,col_int+1));
+        
+        thisfig.Position = [100 100 800 1200];
+        
+        theseaxes = gca;
+        text(0,-(theseaxes.YLim(2)/2),['p-value of signrank = ' num2str(p)])
+        
+        save_string = ['./histograms/Av_Mean_Distance_' key{all_combinations(1,this_comb)+1} '_to_' key{all_combinations(2,this_comb)+1} '_clust_size_' num2str(this_clust_size) '.pdf'];
+        eval(['export_fig ''' save_string ''' -transparent'])
+        
+        close(thisfig)
+    end
+end
+
+
+%pause
+

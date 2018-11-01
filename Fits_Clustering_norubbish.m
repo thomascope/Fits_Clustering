@@ -32,8 +32,8 @@ fprintf(fileID,['Slide_ID,Cluster_Size,Num_Total,Num_Rubbish,Num_Tumour,Num_Lymp
 fclose(fileID);
 
 clear this_comb
-%parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
-for thisfile = 1:size(filenames,1) %could parallelise here by subject
+parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
+%for thisfile = 1:size(filenames,1) %could parallelise here by subject
     %parfor thisfile = 1:5; %for testing
     if any(strcmp(filenames(thisfile).name,detail_filenames))
         detailed_output = 1;
