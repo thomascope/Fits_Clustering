@@ -1,422 +1,65 @@
-% A master script for analysing cell clustering in FITS data
+% A master script for drawing boundaries around FITS data and checking the
+% fit
 % this_pool = cbupool(128);
 % this_pool.ResourceTemplate = '-l nodes=^N^,mem=256GB,walltime=168:00:00';
 % parpool(this_pool,this_pool.NumWorkers)
 
-function Fits_Clustering_norubbish
+function Fits_Visualisation(image_filenumber)
 
 cluster_size = [1, 2, 3, 4, 5, 10, 20, 30, 50]; % Define the size of the cluster of interest for distance in terms of number of cells
 clusters_for_detail = [50]; %Define the sizes of the detailed outputs
 only_detail = 1; %Don't process files unless they are in the list specified for detail;
+visualise = 0; %Whether or not to check relative scaling of FITS and SVS
 if ~only_detail
     filenames = dir('./level2_catalogues/*.fits');
 end
 
 %detail_filenames = {'647365.fits','647366.fits','605012.fits','605019.fits','605181.fits','605182.fits','608225.fits','608226.fits','643632.fits','643619.fits','647364.fits','648121.fits'}; %Which files do we want detailed output for?
+if ~exist('image_filenumber','var')
+    image_filenumber = 603288;
+end
+image_path = [pwd '/raw/' num2str(image_filenumber) '.svs'];
 
-these_filenumbers = [
-591564
-591916
-591535
-591571
-591541
-591568
-591877
-591567
-591843
-591538
-591554
-590218
-590263
-590265
-590274
-590271
-590268
-592609
-590822
-590788
-590785
-590782
-590779
-590763
-591874
-612235
-612091
-612863
-612862
-612842
-612836
-612837
-612828
-612092
-612093
-612119
-612120
-612143
-612144
-612345
-612328
-612347
-612348
-616595
-616575
-616572
-616573
-616522
-616843
-616845
-616848
-616851
-616854
-616856
-616859
-616862
-616871
-616872
-616892
-616893
-616976
-616987
-617482
-602951
-603006
-603911
-604105
-604106
-607166
-626171
-593978
-593980
-593981
-593987
-593988
-593989
-594000
-594001
-594002
-594006
-594007
-594009
-594017
-594020
-594022
-594027
-594033
-594060
-594061
-594062
-594065
-594066
-594068
-594071
-594072
-594075
-594080
-594081
-594082
-594141
-595806
-595807
-595808
-597768
-597769
-597770
-597777
-597778
-597779
-597794
-597795
-597796
-597800
-597801
-597802
-599797
-599798
-599799
-599803
-599804
-599806
-599831
-599832
-599850
-599851
-599852
-602915
-602921
-602935
-602938
-602942
-602945
-602952
-602956
-602958
-602962
-602966
-602971
-602976
-602983
-602994
-603005
-603007
-603245
-603257
-603262
-603263
-603269
-603271
-603275
-603919
-603922
-603923
-603925
-603928
-603941
-603944
-603963
-603966
-603970
-603976
-603982
-603987
-604045
-604047
-604055
-604057
-604061
-604062
-604066
-604071
-604077
-604078
-604083
-604089
-604098
-619460
-619465
-619483
-619487
-619503
-619508
-619515
-619519
-619527
-619533
-619550
-619571
-619572
-619579
-619842
-619852
-619859
-619863
-619868
-619877
-619884
-619905
-619922
-619932
-619942
-619953
-625322
-625333
-625338
-625876
-625882
-625887
-625891
-625908
-625911
-625916
-625923
-625930
-625931
-625936
-625946
-625951
-625958
-626018
-626102
-626103
-626160
-626166
-626172
-650537
-602927
-597812
-597813
-597814
-607165
-593708
-593942
-593944
-593949
-593950
-593952
-593960
-593961
-593963
-593971
-593972
-593974
-594035
-594036
-594038
-594044
-594045
-594046
-594051
-594052
-594053
-594088
-594089
-594091
-594095
-594096
-594097
-594105
-594107
-594110
-594111
-594113
-594116
-594117
-594118
-594137
-594138
-594140
-597786
-597788
-597789
-597806
-597807
-597808
-597820
-597821
-597823
-597830
-597831
-597832
-597838
-597839
-598791
-599813
-599814
-599817
-599823
-599824
-599825
-599839
-599842
-599843
-599844
-603055
-603253
-603279
-603283
-603288
-603292
-603298
-603300
-603356
-603904
-603905
-603952
-603956
-603957
-603958
-604094
-604107
-604108
-619470
-619476
-619489
-619496
-619538
-619539
-619540
-619556
-619558
-619564
-619565
-619583
-619678
-619793
-619799
-619803
-619809
-619815
-619820
-619821
-619832
-619837
-619847
-619857
-619872
-619896
-619897
-619911
-619916
-619926
-619937
-619954
-620961
-625865
-625871
-625895
-625900
-626047
-626061
-650630
-650631
-673966
-673975
-673983
-673996
-674288
-674276
-674294
-674305
-674314
-674327
-674187
-674188
-673909
-674197
-674337
-674215
-674223
-674231
-674232
-674118
-674264
-674130
-674131
-674344
-674047
-674143
-674159
-674160
-684483
-674056
-];
+if ~exist(image_path,'file')
+    error(['The image path ' image_path ' does not exist'])
+end
 
-detail_filenames = cell(size(these_filenumbers));
+image_info=imfinfo(image_path);
+thumbnail_height_scale_factor = image_info(1).Height/image_info(2).Height;
+thumbnail_width_scale_factor = image_info(1).Width/image_info(2).Width;
+thumbnail_overall_scale_factor = mean([thumbnail_height_scale_factor,thumbnail_width_scale_factor]);
+
+low_res_layer = length(image_info)-2; 
+high_res_layer = 1;
+thumbnail_layer = 2;
+%By convention:
+% First level	Full resolution image
+% Second level	Thumbnail
+% Third level to N-2 Level	A reduction by a power of 2 (4:1 ratio, 16:1 ratio, 32:1 ratio, etc)
+% N-1 Level	Slide Label
+% N Level	Entire Slide with cropped region delineated in green
+
+%image_io=imread(image_path,'Index',low_res_layer);
+thumbnail_io=imread(image_path,'Index',thumbnail_layer);
+large_thumbnail_io = imresize(thumbnail_io,thumbnail_overall_scale_factor);
+
+detail_filenames = cell(size(image_filenumber));
 for i = 1:length(detail_filenames)
-    detail_filenames{i} = [num2str(these_filenumbers(i)) '.fits'];
+    detail_filenames{i} = [num2str(image_filenumber(i)) '.fits'];
     if only_detail 
         filenames(i,1).name = detail_filenames{i};
     end
 end
 
 
-%Create output file
-outfile = ['./clustering_data_multi_distance_third.csv'];
-detail_dir = ['./detail_newlist/'];
-if ~exist(detail_dir,'dir')
-mkdir(detail_dir)
-end
-outfile_detail_stem = [detail_dir 'clustering_detail_'];
-fileID = fopen(outfile,'w');
+% %Create output file
+% outfile = ['./clustering_data_multi_distance_third.csv'];
+% detail_dir = ['./detail_newlist/'];
+% if ~exist(detail_dir,'dir')
+% mkdir(detail_dir)
+% end
+% outfile_detail_stem = [detail_dir 'clustering_detail_'];
+% fileID = fopen(outfile,'w');
 
 %Write output file header
 all_combinations = combvec(1:4,1:4); % 0:4 includes rubbish, 1:4 excludes
@@ -430,17 +73,13 @@ for this_comb_outside = 1:size(all_combinations,2)
     header_string = [header_string ',Av_Mean_Distance_' key{all_combinations(1,this_comb_outside)+1} '_to_' key{all_combinations(2,this_comb_outside)+1} ',Av_Bootstrap_Distance_' key{all_combinations(1,this_comb_outside)+1} '_to_' key{all_combinations(2,this_comb_outside)+1} ',iqr_Mean_Distance_' key{all_combinations(1,this_comb_outside)+1} '_to_' key{all_combinations(2,this_comb_outside)+1} ',iqr_Bootstrap_Distance_' key{all_combinations(1,this_comb_outside)+1} '_to_' key{all_combinations(2,this_comb_outside)+1}];
 end
 
-fprintf(fileID,['Slide_ID,Cluster_Size,Num_Total,Num_Rubbish,Num_Tumour,Num_Lymphs,Num_Stroma,Num_Normal,Prop_Rubbish,Prop_Tumour,Prop_Lymphs,Prop_Stroma,Prop_Normal' header_string '\n']);
-fclose(fileID);
+% fprintf(fileID,['Slide_ID,Cluster_Size,Num_Total,Num_Rubbish,Num_Tumour,Num_Lymphs,Num_Stroma,Num_Normal,Prop_Rubbish,Prop_Tumour,Prop_Lymphs,Prop_Stroma,Prop_Normal' header_string '\n']);
+% fclose(fileID);
 
-parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
-%for thisfile = 1:size(filenames,1) %could parallelise here by subject
-    %parfor thisfile = 1:5; %for testing
-    if any(strcmp(filenames(thisfile).name,detail_filenames))
-        detailed_output = 1;
-    else
-        detailed_output = 0;
-    end
+%parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
+for thisfile = 1:size(filenames,1) %could parallelise here by subject
+    
+    detailed_output = 1;
     try
         sprintf(['Working on file ' filenames(thisfile).name])
         
@@ -463,9 +102,19 @@ parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
         % 3 is stroma
         % 4 is normal
         
-        % %Optionally visualise the slide
-        % figure
-        % scatter(data{X_ind}(data{cell_ind}~=0),data{Y_ind}(data{cell_ind}~=0),1,data{cell_ind}(data{cell_ind}~=0)) %Ignore cell type 0
+        % %Optionally visualise the slide to ensure overlay
+        if visualise == 1
+        figure
+        ax = gca();
+        scatter(data{X_ind}(data{cell_ind}~=0),data{Y_ind}(data{cell_ind}~=0),1,data{cell_ind}(data{cell_ind}~=0)) %Ignore cell type 0
+        hold(ax, 'on');
+        imh = imshow(large_thumbnail_io);
+        hold(ax, 'off');
+        uistack(imh, 'bottom')
+        pause
+        end
+        
+            
         
         % First compute the number of each cell type
         num_total = size(data{cell_ind},1);
@@ -487,6 +136,37 @@ parfor thisfile = 1:size(filenames,1) %could parallelise here by subject
         data_trimmed{cell_ind} = data_trimmed{cell_ind}(data{cell_ind}~=0);
         data_trimmed{X_ind} = data_trimmed{X_ind}(data{cell_ind}~=0);
         data_trimmed{Y_ind} = data_trimmed{Y_ind}(data{cell_ind}~=0);
+        
+        
+        % Now create contours based on tumour cells
+        i = 5;
+        j = 30;
+        %for i = 1:2:20 %For determining good values of bin size
+         %   for j = 1:10:100 %For determining good values of contour value
+            %subplot(4,5,i)
+            figure
+            ax = gca();
+            contourscale = i
+            [n,c] = hist3([test_tumour_matrix(:,1),test_tumour_matrix(:,2)],[round(image_info(2).Width/contourscale),round(image_info(2).Height/contourscale)]);
+            contour(c{1},c{2},n',[j j])
+            hold(ax, 'on');
+            imh = imshow(large_thumbnail_io);
+            hold(ax, 'off');
+            uistack(imh, 'bottom')
+         %   pause(2)
+          %  end
+        %end
+        figure
+        contourscale = 10
+        ax = gca();
+        [n,c] = hist3([test_tumour_matrix(:,1),test_tumour_matrix(:,2)],[round(image_info(2).Width/contourscale),round(image_info(2).Height/contourscale)]);
+        contour(c{1},c{2},n')
+        hold(ax, 'on');
+        imh = imshow(large_thumbnail_io);
+        hold(ax, 'off');
+        uistack(imh, 'bottom')
+        
+        
         
         % Now compute the euclidian distances between each cell type and its
         % nearest neighbour of another cell type
